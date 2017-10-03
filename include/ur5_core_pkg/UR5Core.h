@@ -26,11 +26,15 @@ class UR5Core {
 private:
 	float UR5Joints[7];
 		// DH Parameters for the UR5. Refer to png file
-		double D1 = 0.08916;
-		double D3 = 0.425;
-		double D4 = 0.10915;
-		double D5 = 0.39225;
-		double D7 = 0.09456;
+    const double d1 =  0.089159;
+    const double a2 = -0.42500;
+    const double a3 = -0.39225;
+    const double d4 =  0.10915;
+    const double d5 =  0.09465;
+    const double d6 =  0.0823;
+    const double ZERO_THRESH = 0.00000001;
+
+
 		ros::Publisher UR5JointPublisher[6];
 
 		const double UR5JointLimits[7] = {
@@ -41,7 +45,9 @@ private:
 		175.0*PI / 180.0,
 		175.0*PI / 180.0,
 		175.0*PI / 180.0};
-
+		int SIGN(double x) {
+		            return (x > 0) - (x < 0);
+		}
 
 public:
 		std_msgs::Float64 xJoint[7];
@@ -49,7 +55,7 @@ public:
 	UR5Core();
 	bool findInverseKinematics(const geometry_msgs::Pose & desiredPose);
 	bool findInverseKinematics2(const geometry_msgs::Pose & desiredPose);
-
+    int inverse(const geometry_msgs::Pose & desiredPose);
 	void sendJointCommands(std_msgs::Float64* xJoint);
 
 
