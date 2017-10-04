@@ -14,7 +14,16 @@
 #include <Eigen/Dense>
 #include <geometry_msgs/PoseStamped.h>
 #include <std_msgs/Float64.h>
+#include <dynamic_reconfigure/server.h>
+#include <ur5_core_pkg/UR5GUIConfig.h>
+#include <boost/thread.hpp>
 
+#include <boost/shared_ptr.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+
+
+using namespace boost;
 
 #define PI 3.14159265359
 
@@ -36,7 +45,7 @@ private:
 
 
 		ros::Publisher UR5JointPublisher[6];
-
+		ros::Subscriber ur5_pose_subscriber;
 		const double UR5JointLimits[7] = {
 		175.0*PI / 180.0,
 		175.0*PI / 180.0,
@@ -57,6 +66,7 @@ public:
 	bool findInverseKinematics2(const geometry_msgs::Pose & desiredPose);
     int inverse(const geometry_msgs::Pose & desiredPose);
 	void sendJointCommands(std_msgs::Float64* xJoint);
+	void UR5DesiredPoseCallback(const geometry_msgs::PosePtr& intendedPose);
 
 
 };

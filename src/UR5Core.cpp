@@ -20,11 +20,24 @@
 		printf("By: Haitham El-Hussieny \n");
 
 		printf("-----------------------------\n");
-//-------------
+		this->ur5_pose_subscriber = nh_.subscribe("/UR5/desiredPose",1,&UR5Core::UR5DesiredPoseCallback,this);
 sleep(1);
 	}
 
-//********************************************************************************************************//
+
+	//********************************************************************************************************//
+	void UR5Core::UR5DesiredPoseCallback(const geometry_msgs::PosePtr& intendedPose)
+	{
+
+		// For bounded reigon (For Safety)
+	/*	intendedPose->position.x = BOUND(intendedPose->position.x,KUKA_X_MIN,KUKA_X_MAX);
+		intendedPose->position.y = BOUND(intendedPose->position.y,KUKA_Y_MIN,KUKA_Y_MAX);
+		intendedPose->position.z = BOUND(intendedPose->position.z,KUKA_Z_MIN,KUKA_Z_MAX);
+	*/
+		printf("Pose:[%.3f,%.3f,%.3f] \n",intendedPose->position.x,intendedPose->position.y,intendedPose->position.z);
+
+
+	}
 
 	bool UR5Core::findInverseKinematics(const geometry_msgs::Pose & desiredPose){
 		 bool output = true;
@@ -39,7 +52,7 @@ sleep(1);
 								mod_pW = pow(pW.norm(),2); // Pwx^2+Pwy^2+Pwz^2
 		            	//mod_pW = pow(pW[0],2) + pow(pW[1],2) + pow(pW[2]-D1,2);
 							c3 = (mod_pW - D3*D3 - D5*D5)/(2*D3*D5);
-							// If c3>1, there is no solution for IKT
+							// If c3>1, there is no solution  for IKT
 							if (c3>1){printf("NOT --- REACHABLE! c=%.3f \n",c3);output= false;
 							for(int j=0;j<6;j++) UR5Joints[j]=0;
 							return output;
@@ -103,7 +116,7 @@ sleep(1);
 			 bool output = true;
 				// Auxiliary variables
 					double mod_pW, mod_pWxy, c2, s2, c3, s3, rpW, alpha2;
-						Eigen::Vector3d p(desiredPose.position.x,desiredPose.position.y, desiredPose.position.z);
+						Eigen::Vector3d p(desiredPose.position.y,desiredPose.position.x, desiredPose.position.z);
 						Eigen::Quaterniond R = Eigen::Quaterniond(desiredPose.orientation.x,desiredPose.orientation.y,desiredPose.orientation.z,desiredPose.orientation.w);
 
 						// 1- Calculate wrist position:
@@ -119,7 +132,7 @@ sleep(1);
 
 						//2- q1
 			            alpha2 = acos(d4/rpW);
-			            UR5Joints[0] =(float) atan2(pW[1], pW[0]) + alpha2 + PI/2;
+			            UR5Joints[0] =(float) (atan2(pW[1], pW[0]) + alpha2 + PI/2);
 			            //3- q5
 			            UR5Joints[4] = (float)acos(((p[0]*sin(UR5Joints[0]) - (p[1]*cos(UR5Joints[0])) - d4))/d6);
 			            //4- q6
@@ -195,25 +208,31 @@ sleep(1);
 	int UR5Core::inverse(const geometry_msgs::Pose & desiredPose) {
 
 		double mod_pW, mod_pWxy, c2, s2, c3, s3, rpW, alpha2;
-		Eigen::Vector3d p(desiredPose.position.x,desiredPose.position.y, desiredPose.position.z-d1);
+		Eigen::Vector3d p(desiredPose.position.x,desiredPose.position.y, desiredPose.position.z);
 		Eigen::Quaterniond R = Eigen::Quaterniond(desiredPose.orientation.x,desiredPose.orientation.y,desiredPose.orientation.z,desiredPose.orientation.w);
 
 
 	        int num_sols = 0;
 
 
-            double T00 = R.toRotationMatrix().col(0)[0];
+            double T00 = 1;//R.toRotationMatrix().col(0)[0];
             double T10 = R.toRotationMatrix().col(0)[1];
             double T20 = R.toRotationMatrix().col(0)[2];
 
             double T01 = R.toRotationMatrix().col(1)[0];
-            double T11 = R.toRotationMatrix().col(1)[1];
+            double T11 = 1;//R.toRotationMatrix().col(1)[1];
             double T21 = R.toRotationMatrix().col(1)[2];
 
             double T02 = R.toRotationMatrix().col(2)[0];
             double T12 = R.toRotationMatrix().col(2)[1];
-            double T22 = R.toRotationMatrix().col(2)[2];
+            double T22 = 1;//R.toRotationMatrix().col(2)[2];
             double T03 = p[0]; double T13 = p[1]; double T23 = p[2];
+            printf("----------------- \n");
+
+            printf("[%.2f, %.2f, %.2f, %.2f] \n",T00, T01, T02, T03 );
+            printf("[%.2f, %.2f, %.2f, %.2f] \n",T10, T11, T12, T13 );
+            printf("[%.2f, %.2f, %.2f, %.2f] \n",T20, T21, T22, T23 );
+            printf("----------------- \n");
 
 
 	        ////////////////////////////// shoulder rotate joint (q1) //////////////////////////////
@@ -361,6 +380,9 @@ sleep(1);
 
 
 	void UR5Core::sendJointCommands(std_msgs::Float64* xJoint){
+		for (int i = 0; i < 6; i++)printf("Joint [%d]: %.3f \n", i, xJoint[i].data);
+
+
 	UR5JointPublisher[0].publish(xJoint[0]);
 	UR5JointPublisher[1].publish(xJoint[1]);
 	UR5JointPublisher[2].publish(xJoint[2]);
