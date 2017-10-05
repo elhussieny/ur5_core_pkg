@@ -209,23 +209,23 @@ sleep(1);
 
 		double mod_pW, mod_pWxy, c2, s2, c3, s3, rpW, alpha2;
 		Eigen::Vector3d p(desiredPose.position.x,desiredPose.position.y, desiredPose.position.z);
-		Eigen::Quaterniond R = Eigen::Quaterniond(desiredPose.orientation.x,desiredPose.orientation.y,desiredPose.orientation.z,desiredPose.orientation.w);
-
+		Eigen::Quaterniond R = Eigen::Quaterniond(desiredPose.orientation.w,desiredPose.orientation.x,desiredPose.orientation.y,desiredPose.orientation.z);
+printf("Quaternion scalar:%.3f, Vector:[%.3f, %.3f, %.3f] \n", R.w(), R.x(), R.y(),R.z());
 
 	        int num_sols = 0;
 
 
-            double T00 = 1;//R.toRotationMatrix().col(0)[0];
+            double T00 = R.toRotationMatrix().col(0)[0];
             double T10 = R.toRotationMatrix().col(0)[1];
             double T20 = R.toRotationMatrix().col(0)[2];
 
             double T01 = R.toRotationMatrix().col(1)[0];
-            double T11 = 1;//R.toRotationMatrix().col(1)[1];
+            double T11 = R.toRotationMatrix().col(1)[1];
             double T21 = R.toRotationMatrix().col(1)[2];
 
             double T02 = R.toRotationMatrix().col(2)[0];
             double T12 = R.toRotationMatrix().col(2)[1];
-            double T22 = 1;//R.toRotationMatrix().col(2)[2];
+            double T22 = R.toRotationMatrix().col(2)[2];
             double T03 = p[0]; double T13 = p[1]; double T23 = p[2];
             printf("----------------- \n");
 
@@ -240,7 +240,7 @@ sleep(1);
 	        {
 	            double A = d6*T12 - T13;
 	            double B = d6*T02 - T03;
-	            double R = A*A + B*B;
+	            double RW = A*A + B*B;
 	            if(fabs(A) < ZERO_THRESH) {
 	                double div;
 	                if(fabs(fabs(d4) - fabs(B)) < ZERO_THRESH)
@@ -254,7 +254,7 @@ sleep(1);
 	                    q1[0] = arcsin + 2.0*PI;
 	                else
 	                    q1[0] = arcsin;
-	                q1[1] = PI - arcsin;
+	             //   q1[1] = PI - arcsin;
 	            }
 	            else if(fabs(B) < ZERO_THRESH) {
 	                double div;
@@ -264,13 +264,13 @@ sleep(1);
 	                    div = d4/A;
 	                double arccos = acos(div);
 	                q1[0] = arccos;
-	                q1[1] = 2.0*PI - arccos;
+	                //q1[1] = 2.0*PI - arccos;
 	            }
-	            else if(d4*d4 > R) {
+	            else if(d4*d4 > RW) {
 	                return num_sols;
 	            }
 	            else {
-	                double arccos = acos(d4 / sqrt(R)) ;
+	                double arccos = acos(d4 / sqrt(RW)) ;
 	                double arctan = atan2(-B, A);
 	                double pos = arccos + arctan;
 	                double neg = -arccos + arctan;
@@ -282,10 +282,10 @@ sleep(1);
 	                    q1[0] = pos;
 	                else
 	                    q1[0] = 2.0*PI + pos;
-	                if(neg >= 0.0)
-	                    q1[1] = neg;
-	                else
-	                    q1[1] = 2.0*PI + neg;
+	                //if(neg >= 0.0)
+	                   // q1[1] = neg;
+	                //else
+	                   // q1[1] = 2.0*PI + neg;
 	            }
 	        }
 	        ////////////////////////////////////////////////////////////////////////////////
@@ -293,25 +293,25 @@ sleep(1);
 	        ////////////////////////////// wrist 2 joint (q5) //////////////////////////////
 	        double q5[2][2];
 	        {
-	            for(int i=0;i<2;i++) {
-	                double numer = (T03*sin(q1[i]) - T13*cos(q1[i])-d4);
+	        //    for(int i=0;i<2;i++) {
+	                double numer = (T03*sin(q1[0]) - T13*cos(q1[0])-d4);
 	                double div;
 	                if(fabs(fabs(numer) - fabs(d6)) < ZERO_THRESH)
 	                    div = SIGN(numer) * SIGN(d6);
 	                else
 	                    div = numer / d6;
 	                double arccos = acos(div);
-	                q5[i][0] = arccos;
-	                q5[i][1] = 2.0*PI - arccos;
-	            }
+	                q5[0][0] = arccos;
+	               // q5[i][1] = 2.0*PI - arccos;
+	           // }
 	        }
 	        ////////////////////////////////////////////////////////////////////////////////
 
 	        {
-	            for(int i=0;i<2;i++) {
-	                for(int j=0;j<2;j++) {
-	                    double c1 = cos(q1[i]), s1 = sin(q1[i]);
-	                    double c5 = cos(q5[i][j]), s5 = sin(q5[i][j]);
+	           // for(int i=0;i<2;i++) {
+	              //  for(int j=0;j<2;j++) {
+	                    double c1 = cos(q1[0]), s1 = sin(q1[0]);
+	                    double c5 = cos(q5[0][0]), s5 = sin(q5[0][0]);
 	                    double q6;
 	                    ////////////////////////////// wrist 3 joint (q6) //////////////////////////////
 	                    if(fabs(s5) < ZERO_THRESH)
@@ -340,40 +340,40 @@ sleep(1);
 	                        c3 = SIGN(c3);
 	                    else if(fabs(c3) > 1.0) {
 	                        // TODO NO SOLUTION
-	                        continue;
+	                        return num_sols;
 	                    }
 	                    double arccos = acos(c3);
 	                    q3[0] = arccos;
-	                    q3[1] = 2.0*PI - arccos;
+	                    //q3[1] = 2.0*PI - arccos;
 	                    double denom = a2*a2 + a3*a3 + 2*a2*a3*c3;
 	                    double s3 = sin(arccos);
 	                    double A = (a2 + a3*c3), B = a3*s3;
 	                    q2[0] = atan2((A*p13y - B*p13x) / denom, (A*p13x + B*p13y) / denom);
-	                    q2[1] = atan2((A*p13y + B*p13x) / denom, (A*p13x - B*p13y) / denom);
+	                    //q2[1] = atan2((A*p13y + B*p13x) / denom, (A*p13x - B*p13y) / denom);
 	                    double c23_0 = cos(q2[0]+q3[0]);
 	                    double s23_0 = sin(q2[0]+q3[0]);
-	                    double c23_1 = cos(q2[1]+q3[1]);
-	                    double s23_1 = sin(q2[1]+q3[1]);
+	                    //double c23_1 = cos(q2[1]+q3[1]);
+	                    //double s23_1 = sin(q2[1]+q3[1]);
 	                    q4[0] = atan2(c23_0*x04y - s23_0*x04x, x04x*c23_0 + x04y*s23_0);
-	                    q4[1] = atan2(c23_1*x04y - s23_1*x04x, x04x*c23_1 + x04y*s23_1);
+	                    //q4[1] = atan2(c23_1*x04y - s23_1*x04x, x04x*c23_1 + x04y*s23_1);
 	                    ////////////////////////////////////////////////////////////////////////////////
-	                    for(int k=0;k<1;k++) {
-	                        if(fabs(q2[k]) < ZERO_THRESH)
-	                            q2[k] = 0.0;
-	                        else if(q2[k] < 0.0) q2[k] += 2.0*PI;
-	                        if(fabs(q4[k]) < ZERO_THRESH)
-	                            q4[k] = 0.0;
-	                        else if(q4[k] < 0.0) q4[k] += 2.0*PI;
+	             //       for(int k=0;k<1;k++) {
+	                        if(fabs(q2[0]) < ZERO_THRESH)
+	                            q2[0] = 0.0;
+	                        else if(q2[0] < 0.0) q2[0] += 2.0*PI;
+	                        if(fabs(q4[0]) < ZERO_THRESH)
+	                            q4[0] = 0.0;
+	                        else if(q4[0] < 0.0) q4[0] += 2.0*PI;
 
-	                        xJoint[0].data =(float) q1[i];    xJoint[1].data =(float) q2[k];
-	                        xJoint[2].data =(float) q3[k];    xJoint[3].data =(float) q4[k];
-	                        xJoint[4].data =(float)q5[i][j]; xJoint[5].data =(float) q6;
+	                        xJoint[0].data =(float) q1[0];    xJoint[1].data =(float) q2[0];
+	                        xJoint[2].data =(float) q3[0];    xJoint[3].data =(float) q4[0];
+	                        xJoint[4].data =(float)q5[0][0]; xJoint[5].data =(float) q6;
 	                        num_sols++;
-	                    }
+	             //       }
 
 	                }
-	            }
-	        }
+	//            }
+	   //     }
 	        return num_sols;
 	}
 
