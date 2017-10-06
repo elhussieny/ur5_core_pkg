@@ -38,9 +38,9 @@ private:
     const double d1 =  0.089159;
     const double a2 = -0.42500;
     const double a3 = -0.39225;
-    const double d4 =  0.10915;
+    const double d4 =  -0.10915;
     const double d5 =  0.09465;
-    const double d6 =  0.0823;
+    const double d6 =  -0.0823;
     const double ZERO_THRESH = 0.00000001;
 
 
@@ -58,13 +58,16 @@ private:
 		            return (x > 0) - (x < 0);
 		}
 
+		double wrapTo2PI(double angle);
+
+
 public:
 		std_msgs::Float64 xJoint[7];
 
 	UR5Core();
 	bool findInverseKinematics(const geometry_msgs::Pose & desiredPose);
 	bool findInverseKinematics2(const geometry_msgs::Pose & desiredPose);
-    int inverse(const geometry_msgs::Pose & desiredPose);
+    bool inverse(const geometry_msgs::Pose & desiredPose);
 	void sendJointCommands(std_msgs::Float64* xJoint);
 	void UR5DesiredPoseCallback(const geometry_msgs::PosePtr& intendedPose);
 
