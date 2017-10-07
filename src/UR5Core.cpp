@@ -210,7 +210,7 @@ sleep(1);
 			Eigen::Vector3d p(desiredPose.position.x,desiredPose.position.y, desiredPose.position.z);
 			Eigen::Quaterniond R = Eigen::Quaterniond(desiredPose.orientation.w,desiredPose.orientation.x,desiredPose.orientation.y,desiredPose.orientation.z);
 			//printf("Quaternion scalar:%.3f, Vector:[%.3f, %.3f, %.3f] \n", R.w(), R.x(), R.y(),R.z());
-			double beta=0, alpha=0, theta_1[4], theta_5[2], theta0=PI, theta1=0, theta5=0, theta6=0;
+			double gamma=0, beta=0, alpha=0, theta_1[4],theta_2[2], theta_3[2], theta_4[2], theta_5[2], theta0=PI, theta1=0, theta2=0, theta3=0, theta4=0, theta5=0, theta6=0;
 
             double T00 = R.toRotationMatrix().col(0)[0];
             double T10 = R.toRotationMatrix().col(0)[1];
@@ -227,12 +227,19 @@ sleep(1);
             double T03 = p[0]; double T13 = p[1]; double T23 = p[2];
             printf("----------------- \n");
 
-            printf("[%.2f, %.2f, %.2f, %.2f] \n",T00, T01, T02, T03 );
-            printf("[%.2f, %.2f, %.2f, %.2f] \n",T10, T11, T12, T13 );
-            printf("[%.2f, %.2f, %.2f, %.2f] \n",T20, T21, T22, T23 );
+//            printf("[%.2f, %.2f, %.2f, %.2f] \n",T00, T01, T02, T03 );
+//            printf("[%.2f, %.2f, %.2f, %.2f] \n",T10, T11, T12, T13 );
+//            printf("[%.2f, %.2f, %.2f, %.2f] \n",T20, T21, T22, T23 );
+            Eigen::MatrixXd H_e2o(4,4);
+            H_e2o <<T00, T01, T02, T03,
+            		T10, T11, T12, T13,
+            		T20, T21, T22, T23,
+            		0  ,  0 ,  0 ,  1;
+            cout<< H_e2o<<endl;
             printf("----------------- \n");
 
-            double q[6];
+
+
 ////////////////////////////// shoulder rotate joint (q1) //////////////////////////////
 				Eigen::Vector3d pW = p + (R.toRotationMatrix().col(2)*d6);
 				printf("pW: [%.3f, %.3f, %.3f] \n", pW[0], pW[1], pW[2]);
@@ -339,81 +346,56 @@ sleep(1);
             	            UR5Joints[5] = wrapTo2PI(theta6);
 
             	    }
-////////////////////////////// joint (q6) //////////////////////////////
-            	    %% Calculate \theta_2, \theta_3, and \theta_4
-            	    n = numel(theta1);
-            	    for i = 1:n
-            	        % Calculate H2e (H^2_e)
-            	        % -> Shorthand used:
-            	        %       HAB = H^A_B (Frame B relative to Frame A)
-            	        % -> General form:
-            	        %       H_b2a = H^a_b (Frame a relative to Frame b)
-            	        DH_q = UR_DHtable(urMod,[theta1(i); 0; 0; 0; theta5(i); theta6(i)]);
-            	        H01 = DH(DH_q(1,1),DH_q(1,2),DH_q(1,3),DH_q(1,4));
-            	        H12 = DH(DH_q(2,1),DH_q(2,2),DH_q(2,3),DH_q(2,4));
-            	        H02 = H01*H12;
-            	        H2e = invSE(H02)*H_e2o; % End-effector Frame relative to Frame 2
+////////////////////////////// Calculate \theta_2, \theta_3, and \theta_4  //////////////////////////////
 
-            	        % Calculate H25 (H^2_5) & p25
-            	        H56 = DH(DH_q(6,1),DH_q(6,2),DH_q(6,3),DH_q(6,4));
-            	        H6e = DH(DH_q(7,1),DH_q(7,2),DH_q(7,3),DH_q(7,4));
-            	        H5e = H56*H6e;
-            	        H25 = H2e*invSE(H5e); % Frame 5 relative to Frame 2
-            	        p25 = H25(1:3,4);     % Origin of Frame 5 relative to Frame 2
+           	        	Eigen::Matrix4Xd H01 = findHTransform(theta0, d0, a0, alpha0);
+           	        	Eigen::Matrix4Xd H12 = findHTransform(theta1, d1, a1, alpha1);
+           	        	Eigen::Matrix4Xd H02 = H01*H12;
+            	        Eigen::Matrix4Xd H2e = H02.inverse()*H_e2o; // End-effector Frame relative to Frame 2
+//
+//            	        % Calculate H25 (H^2_5) & p25
+            	        Eigen::Matrix4Xd H56 = findHTransform(theta5, d5, a5, alpha5);
+            	        Eigen::Matrix4Xd H6e = findHTransform(-theta6+PI, d6, a6, alpha6);
+            	        Eigen::Matrix4Xd H5e = H56*H6e;
+            	        Eigen::Matrix4Xd H25 = H2e*H5e.inverse(); // Frame 5 relative to Frame 2
+            	        Eigen::Vector4d p25 = H25.col(3);     // Origin of Frame 5 relative to Frame 2
 
-            	        R(i) = sqrt( p25(1)^2 + p25(2)^2 );
-            	        %(a2^2 + R(i)^2 - a3^2)
-            	        %(2*a2*R(i))
-            	        if R(i) <= a2 + a3 && (a2^2 + R(i)^2 - a3^2) <= (2*a2*R(i))
-            	            % These initial calculations assume that the +z-axis for joint 2,
-            	            % 3, and 4 are aligned. The step following this calculation
-            	            % accounts for the possibility of changing the z-direction.
+            	        double p25N = sqrt( p25[0]*p25[0] + p25[1]*p25[1]);
+            	        cout<<p25N<<endl;
+//            	        %(a2^2 + R(i)^2 - a3^2)
+//            	        %(2*a2*R(i))
+            	        cout<<(p25N <= (a2 + a3)) <<endl;
+            	        cout<<(p25N <= (((a2*a2) + (p25N*p25N) - (a3*a3)) <= (2*a2*p25N))) <<endl;
 
-            	            % Calculate \theta_2
-            	            alpha(i) = sgnTheta2*atan2(p25(2),p25(1));
-            	            beta(i) = acos( (a2^2 + R(i)^2 - a3^2)/(2*a2*R(i)) );
-            	            theta2(i)   = alpha(i) + beta(i); % elbow-down solution
-            	            theta2(i+n) = alpha(i) - beta(i); % elbow-up solution
-            	            % Calculate \theta_3
-            	            gamma(i) = acos( (a2^2 + a3^2 - R(i)^2)/(2*a2*a3) );
-            	            theta3(i)   = -(pi-gamma(i)); % elbow-down solution
-            	            theta3(i+n) =  (pi-gamma(i)); % elbow-up solution
-            	            % Calculate \theta_4
-            	            angSum = sgnTheta2*atan2(H25(2,1),H25(1,1));
-            	            theta4(i)   = angSum - theta2(i)   - theta3(i);
-            	            theta4(i+n) = angSum - theta2(i+n) - theta3(i+n);
 
-            	            % Account for possible differences in the +z-axis between joint 2,
-            	            % 3, and 4.
-            	            if sgnTheta2 ~= sgnTheta3
-            	                theta3(i)   = -theta3(i);
-            	                theta3(i+n) = -theta3(i+n);
-            	            end
-            	            if sgnTheta2 ~= sgnTheta4
-            	                theta4(i)   = -theta4(i);
-            	                theta4(i+n) = -theta4(i+n);
-            	            end
+            	        if ((p25N <= (a2 + a3)) && (((a2*a2) + (p25N*p25N) - (a3*a3)) <= (2*a2*p25N)))
+//            	            % These initial calculations assume that the +z-axis for joint 2,
+//            	            % 3, and 4 are aligned. The step following this calculation
+//            	            % accounts for the possibility of changing the z-direction.
+{
+//            	            % Calculate \theta_2
+            	            alpha = -atan2(p25[1],p25[0]);
+            	            beta  = acos( (a2*a2 + p25N*p25N - a3*a3)/(2*a2*p25N) );
+            	            theta_2[0]   = alpha + beta; // elbow-down solution
+            	            theta_2[1] = alpha - beta; // elbow-up solution
+            	            theta2 = theta_2[1];
+            	            UR5Joints[1] = wrapTo2PI(theta2);
+//            	            % Calculate \theta_3
+            	            gamma = acos((a2*a2 + a3*a3 - p25N*p25N)/(2*a2*a3));
+            	            theta_3[0]   = -(PI-gamma); //% elbow-down solution
+            	            theta_3[1]   =  (PI-gamma); //% elbow-up solution
+            	            theta3 = theta_3[1];
+            	            UR5Joints[2] = wrapTo2PI(theta3);
+//            	            % Calculate \theta_4
+            	            double angSum = -atan2(H25.col(0)[1],H25.col(0)[0]);
+            	            theta_4[0]   = angSum - theta_2[0]   - theta_3[0];
+            	            theta_4[1] 	 = angSum - theta_2[1]   - theta_3[1];
+            	            theta4 = theta_4[1];
+            	            UR5Joints[3] = wrapTo2PI(theta4);
+}
+
             	        else
-            	            % No Solution Exists
-            	            theta2(i)   = nan;
-            	            theta2(i+n) = nan;
-            	            theta3(i)   = nan;
-            	            theta3(i+n) = nan;
-            	            theta4(i)   = nan;
-            	            theta4(i+n) = nan;
-            	        end
-            	    end
-
-            	    % Repeat solutions for the additional solutions of \theta_2, \theta_3, & \theta_4
-            	    theta0 = repmat(theta0,1,2);
-            	    theta1 = repmat(theta1,1,2);
-            	    theta5 = repmat(theta5,1,2);
-            	    theta6 = repmat(theta6,1,2);
-
-            	    %% Show thetas
-            	    theta2 = wrapTo2Pi(theta2);
-            	    theta3 = wrapTo2Pi(theta3);
-            	    theta4 = wrapTo2Pi(theta4);
+            	        {ROS_ERROR("No Solution Exists!");output = false; return output;}
 
 
 
@@ -421,18 +403,10 @@ sleep(1);
 
 
 //////////////////////////////////////////////////////////////////////////
-            	//for (int i = 0; i < 1; i++){
-            		xJoint[0].data =(float) UR5Joints[0]; // for ROS V-REP
-            	    xJoint[4].data =(float) UR5Joints[4];
-            	    xJoint[5].data =(float) UR5Joints[5];
-
-
-            		printf("Joint[%d]: %.3f \n", 1, UR5Joints[0]);
-            		printf("Joint[%d]: %.3f \n", 5, UR5Joints[4]);
-            		printf("Joint[%d]: %.3f \n", 6, UR5Joints[5]);
-
-
-            	//}
+            	for (int i = 0; i < 6; i++){
+            		xJoint[i].data =(float) UR5Joints[i]; // for ROS V-REP
+            		printf("Joint[%d]: %.3f \n", i+1, UR5Joints[i]);
+            	}
 
             	return output;
 	}
@@ -441,14 +415,15 @@ sleep(1);
 	void UR5Core::sendJointCommands(std_msgs::Float64* xJoint){
 	//	for (int i = 0; i < 6; i++)printf("Joint [%d]: %.3f \n", i, xJoint[i].data);
 	UR5JointPublisher[0].publish(xJoint[0]);
-	//UR5JointPublisher[1].publish(xJoint[1]);
-	//UR5JointPublisher[2].publish(xJoint[2]);
-	//UR5JointPublisher[3].publish(xJoint[3]);
+	UR5JointPublisher[1].publish(xJoint[1]);
+	UR5JointPublisher[2].publish(xJoint[2]);
+	UR5JointPublisher[3].publish(xJoint[3]);
 	UR5JointPublisher[4].publish(xJoint[4]);
 	UR5JointPublisher[5].publish(xJoint[5]);
 	printf("Joints Sent Successfully! \n");
 
 }
+	//********************************************************************************************************//
 
 	double UR5Core::wrapTo2PI(double angle){
 		bool was_neg = angle < 0;
@@ -456,6 +431,27 @@ sleep(1);
 				   if (was_neg) angle += (2.0 * M_PI);
 		return angle;
 	}
+	//********************************************************************************************************//
 
+	Eigen::MatrixXd UR5Core::findDHTable(double* q){
+		Eigen::MatrixXd UR5_DHTable(4,7);
+		UR5_DHTable << q[0],d0,a0,alpha0,
+				q[1],d1,a1,alpha1,
+				q[2],d2,a2,alpha2,
+				q[3],d3,a3,alpha3,
+				q[4],d4,a4,alpha4,
+				q[5],d5,a5,alpha5,
+				q[6],d6,a6,alpha6;
 
+	    return UR5_DHTable;
+	}
+	//********************************************************************************************************//
+	Eigen::Matrix4d UR5Core::findHTransform(double theta, double d, double a, double alpha){
+		Eigen::Matrix4d H;
+		H<<cos(theta), -cos(alpha)*sin(theta),  sin(alpha)*sin(theta), a*cos(theta),
+		 sin(theta),  cos(alpha)*cos(theta), -sin(alpha)*cos(theta), a*sin(theta),
+		          0,             sin(alpha),             cos(alpha),            d,
+		          0,                      0,                      0,            1;
+		return H;
+	}
 

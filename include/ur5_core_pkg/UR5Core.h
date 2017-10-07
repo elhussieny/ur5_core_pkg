@@ -10,6 +10,7 @@
 
 #include <ros/ros.h>
 #include <math.h>
+#include <stdio.h>
 #include "std_msgs/String.h"
 #include <Eigen/Dense>
 #include <geometry_msgs/PoseStamped.h>
@@ -28,6 +29,7 @@ using namespace boost;
 #define PI 3.14159265359
 
 using namespace std;
+using namespace Eigen;
 
 //-------------------------------------------------------------------------------------------------//
 class UR5Core {
@@ -35,12 +37,31 @@ class UR5Core {
 private:
 	float UR5Joints[7];
 		// DH Parameters for the UR5. Refer to png file
+    const double d0 =  0.0;
     const double d1 =  0.089159;
-    const double a2 = -0.42500;
-    const double a3 = -0.39225;
+    const double d2 =  0;
+    const double d3 =  0;
     const double d4 =  -0.10915;
     const double d5 =  0.09465;
     const double d6 =  -0.0823;
+
+    const double a0 =  0;
+    const double a1 =  0;
+    const double a2 = 0.42500;
+    const double a3 = 0.39225;
+    const double a4 =  0;
+    const double a5 =  0;
+    const double a6 =  0;
+
+    const double alpha0 =  0;
+    const double alpha1 =  PI/2;
+    const double alpha2 =  0;
+    const double alpha3 =  0;
+    const double alpha4 =  PI/2;
+    const double alpha5 = -PI/2;
+    const double alpha6 =  PI;
+
+
     const double ZERO_THRESH = 0.00000001;
 
 
@@ -59,7 +80,8 @@ private:
 		}
 
 		double wrapTo2PI(double angle);
-
+		Eigen::MatrixXd findDHTable(double* q);
+		Eigen::Matrix4d findHTransform(double theta, double d, double a, double alpha);
 
 public:
 		std_msgs::Float64 xJoint[7];
@@ -70,6 +92,7 @@ public:
     bool inverse(const geometry_msgs::Pose & desiredPose);
 	void sendJointCommands(std_msgs::Float64* xJoint);
 	void UR5DesiredPoseCallback(const geometry_msgs::PosePtr& intendedPose);
+
 
 
 };
